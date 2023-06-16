@@ -27,6 +27,12 @@ CaloClusterCompareNew : {
         CaloClusterCollection : CaloClusterOnline
 }
 
+PhotonAna : {
+        module_type : PhotonAna
+        KalSeedCollection : KKDeM
+				MCTrajectoryCollection : compressRecoMCs
+}
+
 CaloClusterCompareOld : {
         module_type : CaloClusterCompare
         CaloClusterCollection : CaloClusterFast
@@ -80,6 +86,14 @@ ClusterCompareNew :
         CaloClusterCompareNew : @local::CaloClusterCompareNew
    }
    Analysis : [CaloClusterCompareNew]
+}
+
+PhotonAnalysis : 
+{
+   analyzers : {
+        PhotonAna : @local::PhotonAna
+   }
+   Analysis : [PhotonAna]
 }
 
 ClusterCompareOld :

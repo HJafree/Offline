@@ -23,7 +23,7 @@ PatRecBackground : ["Background","Noisy","Dead"]
 TrkFitBackground : ["Dead"]
 
 
-TimeClusterFinder : {
+TimeClusterFinderOld : {
   module_type            : TimeClusterFinder
 
   ComboHitCollection     : "makePH"
@@ -60,32 +60,30 @@ TimeClusterFinder : {
 
 
 # time clustering is the 1st stage of track finding
-TimeAndPhiClusterFinder : {
+TimeClusterFinder : {
   module_type             : TimeAndPhiClusterFinder
   ComboHitCollection     : "makePH"
   StrawHitFlagCollection : "FlagBkgHits:ComboHits"
-  CaloClusterCollection  : "CaloClusterFromProtoCluster"
-  TimeClusterMVA         : { MVAWeights : "Offline/TrkPatRec/data/TimeCluster3.weights.xml" }
+  CaloClusterCollection  : "CaloClusterMaker"
   HitSelectionBits       : ["EnergySelection","TimeSelection","RadiusSelection"]
   HitBackgroundBits      : @local::PatRecBackground
+  MVATime                : { MVAWeights : "Offline/TrkPatRec/data/TimePhiCluster.weights.xml" }
   TestFlag               : true
-  Tbin                   : 15.0
-  Pbin                   : 0.2
-  MinNSHits              : 7
   UseCaloCluster         : false
   CaloClusterMinE        : 50.0
   CaloClusterWeight      : 10.0
-  T0Calculator           : { }
-  AveragePitch           : 0.6
-  WindowTime             : 1
-  MinTimeYbin            : 5
-  MaxTimeDT              : 30.0
-  MaxTimeDTCal           : 30.0
-  MinHitSplit            : 30
-  MVAScoreCut            : 0.75
-  Recover                : true
-  DphiMaxReco            : 1.2
-  Diag                   : 0
+  AlgoAssignHits         : 1
+  MinNSHits              : 10
+  Tbin                   : 15.0
+  MinTimeYbin            : 6
+  MaxTimeDT              : 35.0
+  FilterMVA              : true
+  MinHitSelect           : 50
+  MinCutMVA              : 0.1
+  SplitPhi               : true
+  MaxDeltaPhi            : 0.3
+  MaxNdiff               : 1
+  Diag                   : 3
 
   DiagPlugin : {
     tool_type             : "TimeAndPhiClusterFinderDiag"
@@ -98,61 +96,63 @@ TimeAndPhiClusterFinder : {
 
 # specific time cluster finders for different particle hypotheses.  The redundant Calo time offset should come from conditions FIXME!
 # note these are helicity-independent
+# NOt needed anymore for TimeAndPhiClusterFinder
 TimeClusterFinderDe : {
   @table::TimeClusterFinder
-  AveragePitch : 0.63 # signed
-  T0Calculator : {
-    @table::TimeCalculator
-    StrawHitBeta : 1.0
-  }
+#  AveragePitch : 0.63 # signed
+#  T0Calculator : {
+#    @table::TimeCalculator
+#    StrawHitBeta : 1.0
+#  }
 }
 TimeClusterFinderUe : {
   @table::TimeClusterFinder
-  AveragePitch : -0.63
-  T0Calculator : {
-    @table::TimeCalculator
-    StrawHitBeta : 1.0
-  }
+#  AveragePitch : -0.63
+#  T0Calculator : {
+#    @table::TimeCalculator
+#    StrawHitBeta : 1.0
+#  }
 }
 # muons
 TimeClusterFinderDmu : {
   @table::TimeClusterFinder
-  AveragePitch : 0.63
-  T0Calculator : {
-    @table::TimeCalculator
-    StrawHitBeta : 0.7
-  }
+#  AveragePitch : 0.63
+#  T0Calculator : {
+#    @table::TimeCalculator
+#    StrawHitBeta : 0.7
+#  }
 }
 TimeClusterFinderUmu : {
   @table::TimeClusterFinder
-  AveragePitch : -0.63
-  T0Calculator : {
-    @table::TimeCalculator
-    StrawHitBeta : 0.7
-  }
+#  AveragePitch : -0.63
+#  T0Calculator : {
+#    @table::TimeCalculator
+#    StrawHitBeta : 0.7
+#  }
 }
 # pions
 TimeClusterFinderDpi : {
   @table::TimeClusterFinder
-  AveragePitch : 0.63
-  T0Calculator : {
-    @table::TimeCalculator
-    StrawHitBeta : 0.63
-  }
+#  AveragePitch : 0.63
+#  T0Calculator : {
+#    @table::TimeCalculator
+#    StrawHitBeta : 0.63
+#  }
 }
 TimeClusterFinderUpi : {
   @table::TimeClusterFinder
-  AveragePitch : -0.63
-  T0Calculator : {
-    @table::TimeCalculator
-    StrawHitBeta : 0.63
-  }
+#  AveragePitch : -0.63
+#  T0Calculator : {
+#    @table::TimeCalculator
+#    StrawHitBeta : 0.63
+#  }
 }
 
 # helix finding.  Search for both helicities
 RobustHelixFinder : {
   module_type   : RobustHelixFinder
   ComboHitCollection     : "makePH"
+  chfCollTag             : "FlagBkgHits:ComboHits"
   HelixStereoHitMVA      : { MVAWeights : "Offline/TrkPatRec/data/HelixStereoHitMVA.weights.xml" }
   HelixNonStereoHitMVA   : { MVAWeights : "Offline/TrkPatRec/data/HelixNonStereoHitMVA.weights.xml" }
   DiagPlugin : {
