@@ -197,4 +197,4 @@ _3Dphoton_genxyz->Fill(_x,_z,_y);
 //================================================================
 } // namespace mu2e
 
-DEFINE_ART_MODULE(mu2e::FlatMuonDaughterGenerator);
+DEFINE_ART_MODULE(mu2e::FlatMuonDaughterGenerator)

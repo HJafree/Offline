@@ -69,6 +69,14 @@ namespace mu2e {
     }
   }
 
+  void ComboHitCollection::setParent(art::ValidHandle<ComboHitCollection> const& phandle) {
+    if(phandle.isValid()){
+      _parent = phandle.id();
+    } else {
+      throw cet::exception("RECO")<<"mu2e::ComboHitCollection: invalid handle" << std::endl;
+    }
+  }
+
   void ComboHitCollection::fillStrawDigiIndices(art::Event const& event, uint16_t chindex, vector<StrawDigiIndex>& shids) const {
     ComboHit const& ch = this->at(chindex);
    // see if this collection references other collections: if so, go down 1 layer
@@ -138,7 +146,7 @@ namespace mu2e {
           for(size_t ich=0;ich < size();++ich){
             ComboHit const& ch = (*this)[ich];
             for(auto iph : ch.indexArray())
-              shids[ich].insert(shids[ich].end(),pshids[iph].begin(),pshids[iph].end());
+              shids[ich].insert(shids[ich].end(),pshids[iph].begin(),pshids[iph].end());//FIX ME , problem with indices when using StereoHits, side stepped by if(pshids.size() == 8)
           }
         } else {
           // can skip a step in the hierarchy since the parent of this collection is at the top
