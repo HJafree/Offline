@@ -75,6 +75,7 @@ private:
 	TH2F* _2Dphoton_posxy;
 	TH2F* _2Dphoton_posrz;
 	TH2F* _2Dphoton_timez;
+	TH2F* _2Dphoton_momz;
 	Float_t _pdgid;
 	Float_t startmomentum; 
 	Float_t endmomentum;
@@ -125,9 +126,12 @@ void PhotonAna::beginJob() { //TODO - can add TTree and THistograms here if requ
 	_2Dphoton_posrz=tfs->make<TH2F>("2D photon generation RZ","Position of e+e- hits in R-Z plane" ,100, 3980,3820,150,5400, 6300);
 	_2Dphoton_posrz->GetXaxis()->SetTitle("Position in r [mm]");
 	_2Dphoton_posrz->GetYaxis()->SetTitle("Position in z [mm]");
-	_2Dphoton_timez=tfs->make<TH2F>("2D photon generation","Time and Position of e+e- Z plane" ,100,0,6000,150,5400, 6300);
-	_2Dphoton_timez->GetXaxis()->SetTitle("Time [ns]");
-	_2Dphoton_timez->GetYaxis()->SetTitle("Position in z [mm]");
+	_2Dphoton_timez=tfs->make<TH2F>("2D photon generation","Time and Position of e+e- Z plane" ,150,5400, 6300,100,0,6000);
+	_2Dphoton_timez->GetXaxis()->SetTitle("Position in z [mm]");
+	_2Dphoton_timez->GetYaxis()->SetTitle("Time [ns]");
+	_2Dphoton_momz=tfs->make<TH2F>("2D photon generation","Momentum and Position of e+e- Z plane" ,150,5400, 6300,100,-1,1);
+	_2Dphoton_momz->GetXaxis()->SetTitle("Position in z [mm]");
+	_2Dphoton_momz->GetYaxis()->SetTitle("Start Momentum [MeV/c]");
 }
 void PhotonAna::analyze(const art::Event& event) {
 	auto chH = event.getValidHandle<mu2e::MCTrajectoryCollection>(_SimToken);
@@ -150,7 +154,8 @@ void PhotonAna::analyze(const art::Event& event) {
 	  _3Dphoton_position->Fill(startposx,startposy,startposz); 
 	  _2Dphoton_posxy->Fill(startposx,startposy); 
 	  _2Dphoton_posrz->Fill(startposr,startposz); 
-	  _2Dphoton_timez->Fill(time,startposz); 
+	  _2Dphoton_timez->Fill(startposz,time); 
+	  _2Dphoton_momz->Fill(startmomentum,time); 
 		}
 	}
 }

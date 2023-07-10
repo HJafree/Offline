@@ -130,14 +130,16 @@ _2Dphoton_genxy->GetYaxis()->SetTitle("Position in y [mm]");
 _2Dphoton_genrz = tfs->make<TH2F>("2D photon generation RZ","Position of muon hits in R-Z plane" ,100, 3980,3820,150,5400, 6300);
 _2Dphoton_genrz->GetXaxis()->SetTitle("Position in r [mm]");
 _2Dphoton_genrz->GetYaxis()->SetTitle("Position in z [mm]");
-_3Dphoton_genxyz = tfs->make<TH3F>("3D photon generation","Position of muon hits in X-Y-Z plane " ,100,-3980,-3820,100,-80, 80,150,5400, 6300);
+_3Dphoton_genxyz = tfs->make<TH3F>("3D photon generation","Position of muon hits in X-Y-Z plane " ,100,-3980,-3820,150,5400,6300,100,-80,80);
 _3Dphoton_genxyz->GetXaxis()->SetTitle("Position in x [mm]");
-_3Dphoton_genxyz->GetYaxis()->SetTitle("Position in y [mm]");
-_3Dphoton_genxyz->GetZaxis()->SetTitle("Position in z [mm]");
-//_2Dphoton_zmom = tfs->make<TH2F>("2D photon generation Mom-Z","Momentum and position in z axis" ,100,0,1,200,5400, 6300);
-_2Dphoton_ztime = tfs->make<TH2F>("2D photon generation Time-Z","Time and position in z axis" ,100,0,6000,150,5400, 6300);
-_2Dphoton_ztime->GetXaxis()->SetTitle("Time [ns]");
-_2Dphoton_ztime->GetYaxis()->SetTitle("Position in z [mm]");
+_3Dphoton_genxyz->GetYaxis()->SetTitle("Position in z [mm]");
+_3Dphoton_genxyz->GetZaxis()->SetTitle("Position in y [mm]");
+_2Dphoton_zmom = tfs->make<TH2F>("2D photon generation Mom-Z","Momentum and position in z axis" ,150,5400, 6300,100,-500,500);
+_2Dphoton_zmom->GetXaxis()->SetTitle("Position in z [mm]");
+_2Dphoton_zmom->GetYaxis()->SetTitle("Momentum [MeV/c]");
+_2Dphoton_ztime = tfs->make<TH2F>("2D photon generation Time-Z","Time and position in z axis" ,150,5400, 6300,100,0,6000);
+_2Dphoton_ztime->GetXaxis()->SetTitle("Position in z [mm]");
+_2Dphoton_ztime->GetYaxis()->SetTitle("Time [ns]");
 _photon_generator->Branch("Momentum", &_momentum, "Momentum/F");
 _photon_generator->Branch("Energy", &_energy, "Energy/F");
 _photon_generator->Branch("Time", &_time_hist, "Time/F");
@@ -185,9 +187,9 @@ _r = (sqrt(_x*_x+_y*_y));
 _photon_generator->Fill();
 _2Dphoton_genxy->Fill(_x,_y);
 _2Dphoton_genrz->Fill(_r,_z);
-//_2Dphoton_zmom->Fill(_momentum,_z);
-_2Dphoton_ztime->Fill(_time_hist,_z);
-_3Dphoton_genxyz->Fill(_x,_y,_z);
+_2Dphoton_zmom->Fill(_z,_momentum);
+_2Dphoton_ztime->Fill(_z,_time_hist);
+_3Dphoton_genxyz->Fill(_x,_z,_y);
 }
 
 
