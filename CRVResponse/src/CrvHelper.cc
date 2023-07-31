@@ -22,7 +22,6 @@ namespace mu2e
   }
 
   void CrvHelper::GetInfoFromStepPoints(const std::set<art::Ptr<CrvStep> > &steps,
-                                        const SimParticleTimeOffset &timeOffsets,
                                         double &visibleEnergyDeposited,
                                         double &earliestHitTime, CLHEP::Hep3Vector &earliestHitPos,
                                         art::Ptr<SimParticle> &mostLikelySimParticle)
@@ -53,14 +52,14 @@ namespace mu2e
     //so we need to avoid that some step points from a different micro bunch
     //could be accidentally found to be the step point with the earliest hit time.
     //therefore, only step points of the most likely sim particle will be considered.
-    earliestHitTime=NAN;
+    bool firstLoop=true;
     for(stepPointIter=steps.begin(); stepPointIter!=steps.end(); stepPointIter++)
     {
       const CrvStep &step = **stepPointIter;
-      double timeOffset = timeOffsets.totalTimeOffset(step.simParticle());
-      double t = step.startTime()+timeOffset;
-      if(isnan(earliestHitTime) || earliestHitTime>t)
+      double t = step.startTime();
+      if(firstLoop || earliestHitTime>t)
       {
+        firstLoop=false;
         earliestHitTime=t;
         earliestHitPos=step.startPosition();
       }
@@ -69,7 +68,6 @@ namespace mu2e
 
   void CrvHelper::GetInfoFromCrvRecoPulse(const art::Ptr<CrvRecoPulse> &crvRecoPulse,
                                           const art::Handle<CrvDigiMCCollection> &digis,
-                                          const SimParticleTimeOffset &timeOffsets,
                                           double &visibleEnergyDeposited,
                                           double &earliestHitTime, CLHEP::Hep3Vector &earliestHitPos,
                                           art::Ptr<SimParticle> &mostLikelySimParticle)
@@ -77,7 +75,7 @@ namespace mu2e
     std::set<art::Ptr<CrvStep> > steps;
 
     CrvHelper::GetStepPointsFromCrvRecoPulse(crvRecoPulse, digis, steps);
-    CrvHelper::GetInfoFromStepPoints(steps, timeOffsets, visibleEnergyDeposited,
+    CrvHelper::GetInfoFromStepPoints(steps, visibleEnergyDeposited,
                                      earliestHitTime, earliestHitPos, mostLikelySimParticle);
   }
 

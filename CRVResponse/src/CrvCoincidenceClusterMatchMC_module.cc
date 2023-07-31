@@ -18,7 +18,6 @@
 #include "Offline/MCDataProducts/inc/CrvCoincidenceClusterMC.hh"
 #include "Offline/RecoDataProducts/inc/CrvRecoPulse.hh"
 #include "Offline/RecoDataProducts/inc/CrvCoincidenceCluster.hh"
-#include "Offline/Mu2eUtilities/inc/SimParticleTimeOffset.hh"
 
 #include "canvas/Persistency/Common/Ptr.h"
 #include "art/Framework/Core/EDProducer.h"
@@ -49,14 +48,12 @@ namespace mu2e
                                                           //it is possible to have more than one instance of the CrvCoincidenceClusterFinder module
     std::string _crvWaveformsModuleLabel;  //module label of the CrvWaveform module.
                                            //this is optional. only needed, if MC information is required
-    SimParticleTimeOffset _timeOffsets;
   };
 
   CrvCoincidenceClusterMatchMC::CrvCoincidenceClusterMatchMC(fhicl::ParameterSet const& pset) :
    art::EDProducer{pset},
     _crvCoincidenceClusterFinderModuleLabel(pset.get<std::string>("crvCoincidenceClusterFinderModuleLabel")),
-    _crvWaveformsModuleLabel(pset.get<std::string>("crvWaveformsModuleLabel","")),
-    _timeOffsets(pset.get<fhicl::ParameterSet>("timeOffsets"))
+    _crvWaveformsModuleLabel(pset.get<std::string>("crvWaveformsModuleLabel",""))
   {
     produces<CrvCoincidenceClusterMCCollection>();
   }
@@ -75,7 +72,6 @@ namespace mu2e
 
   void CrvCoincidenceClusterMatchMC::produce(art::Event& event)
   {
-    _timeOffsets.updateMap(event);
 
     std::unique_ptr<CrvCoincidenceClusterMCCollection> crvCoincidenceClusterMCCollection(new CrvCoincidenceClusterMCCollection);
 
@@ -92,7 +88,7 @@ namespace mu2e
     {
       bool   hasMCInfo                = (crvDigiMCCollection.isValid()?true:false); //MC
       double visibleEnergyDeposited   = 0;         //MC
-      double earliestHitTime          = NAN;       //MC
+      double earliestHitTime          = 0;         //MC
       art::Ptr<SimParticle> simParticle;           //MC
       CLHEP::Hep3Vector     earliestHitPos;        //MC
 
@@ -106,7 +102,7 @@ namespace mu2e
         const art::Ptr<CrvRecoPulse> crvRecoPulse = crvRecoPulses[i];
         art::Ptr<SimParticle> simParticleThisPulse;
         double visibleEnergyDepositedThisPulse = 0;
-        double earliestHitTimeThisPulse = NAN; //not used here
+        double earliestHitTimeThisPulse = 0; //not used here
         CLHEP::Hep3Vector earliestHitPosThisPulse; //not used here
 
         //get MC information, if available
@@ -116,7 +112,7 @@ namespace mu2e
           CrvHelper::GetStepPointsFromCrvRecoPulse(crvRecoPulse, crvDigiMCCollection, steps);
 
           //get the sim particle and deposited energy of this reco pulse
-          CrvHelper::GetInfoFromCrvRecoPulse(crvRecoPulse, crvDigiMCCollection, _timeOffsets,
+          CrvHelper::GetInfoFromCrvRecoPulse(crvRecoPulse, crvDigiMCCollection,
                                              visibleEnergyDepositedThisPulse,
                                              earliestHitTimeThisPulse, earliestHitPosThisPulse, simParticleThisPulse);
         }
@@ -127,11 +123,11 @@ namespace mu2e
       }//loop over reco pulses
 
       //based on all step points, get the most likely sim particle, total energy, etc.
-      CrvHelper::GetInfoFromStepPoints(steps, _timeOffsets,
+      CrvHelper::GetInfoFromStepPoints(steps,
                                        visibleEnergyDeposited, earliestHitTime, earliestHitPos, simParticle);
 
       //insert the cluster information into the vector of the crv coincidence clusters (collection of pulses, most likely sim particle, etc.)
-      //unless the reco pulse was caused by a noise hit (and doesn't have an associated simParticle)
+      //if the cluster was caused by noise, the simParticle will be null, the visibleEnergyDeposited, earliestHitTime, and earliestHitPos will be 0
       crvCoincidenceClusterMCCollection->emplace_back(hasMCInfo, pulses, simParticle, visibleEnergyDeposited, earliestHitTime, earliestHitPos);
     }//loop over all clusters
 
