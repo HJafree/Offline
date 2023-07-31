@@ -183,7 +183,7 @@ _time_hist=time;
 _x = mustop->endPosition().x();
 _y = mustop->endPosition().y();
 _z = mustop->endPosition().z();
-_r = (sqrt(_x*_x+_y*_y));
+_r = (sqrt(((_x)*(_x))+_y*_y));
 _photon_generator->Fill();
 _2Dphoton_genxy->Fill(_x,_y);
 _2Dphoton_genrz->Fill(_r,_z);

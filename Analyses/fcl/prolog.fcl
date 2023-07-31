@@ -30,7 +30,7 @@ CaloClusterCompareNew : {
 PhotonAna : {
         module_type : PhotonAna
         KalSeedCollection : KKDeM
-				MCTrajectoryCollection : compressRecoMCs
+MCTrajectoryCollection : compressDigiMCs
 }
 
 CaloClusterCompareOld : {

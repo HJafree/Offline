@@ -76,6 +76,7 @@ private:
 	TH2F* _2Dphoton_posrz;
 	TH2F* _2Dphoton_timez;
 	TH2F* _2Dphoton_momz;
+TH2F* _2Dparts_vs_pdgid;
 	Float_t _pdgid;
 	Float_t startmomentum; 
 	Float_t endmomentum;
@@ -88,9 +89,12 @@ private:
 	Float_t endposx;
 	Float_t endposy;
 	Float_t endposz;
+Int_t nparts;
 	//Float_t _y;
 	//Float_t _z;
-
+//float Square(float value){
+    // Multiply value two times
+   // return value*value;
 	};
 
 PhotonAna::PhotonAna(const Parameters& conf) :
@@ -101,7 +105,7 @@ _SimToken(conf().SimToken())
 
 void PhotonAna::beginJob() { //TODO - can add TTree and THistograms here if required
 	art::ServiceHandle<art::TFileService> tfs;
-	_photon_analyzer=tfs->make<TTree>("photon_analyzer"," Diagnostics for Photon Conversion Track Fitting");
+_photon_analyzer = tfs->make<TTree>("photon_analyzer"," Diagnostics for Photon Conversion Track Fitting");
 	_photon_analyzer->Branch("pdgid", &_pdgid, "pdgid/F"); 
 	_photon_analyzer->Branch("StartMom", &startmomentum, "StartMom/F"); 
 	_photon_analyzer->Branch("EndMom", &endmomentum, "End Mom/F");
@@ -115,23 +119,27 @@ void PhotonAna::beginJob() { //TODO - can add TTree and THistograms here if requ
 	_photon_analyzer->Branch("EndPositiony", &endposx, "EndPositiony/F");
 	_photon_analyzer->Branch("EndPositionz", &endposx, "EndPositionz/F"); 
 	_photon_analyzer->Branch("Time", &time, "Time/F"); 
-	//_photon_analyzer->GetXaxis()->SetTitle("Time[ns]");
-	_3Dphoton_position=tfs->make<TH3F>("3D photon generation","Position of e+e- hits in X-Y-Z plane " ,100,-3980,-3820,100,-80, 80,150,5400, 6300);
+_photon_analyzer->Branch("Particles", &nparts, "Time/I");
+//_photon_analyzer->GetXaxis()->SetTitle("Time[ns]");
+_3Dphoton_position = tfs->make<TH3F>("3D photon generation","Position of e+e- hits in X-Y-Z plane " ,100,-3980,-3820,150,5400, 6300,100,-80, 80);
 	_3Dphoton_position->GetXaxis()->SetTitle("Position in x [mm]");
-	_3Dphoton_position->GetYaxis()->SetTitle("Position in y [mm]");
-	_3Dphoton_position->GetZaxis()->SetTitle("Position in z [mm]");
-	_2Dphoton_posxy=tfs->make<TH2F>("2D photon analyzer XY","Position of e+e- hits in X-Y plane " ,100,-3980,-3820,100,-80, 80);
+_3Dphoton_position->GetYaxis()->SetTitle("Position in z [mm]");
+_3Dphoton_position->GetZaxis()->SetTitle("Position in y [mm]");
+_2Dphoton_posxy = tfs->make<TH2F>("2D photon analyzer XY","Position of e+e- hits in X-Y plane " ,100,-4000,-4000,100,-100, 100);
 	_2Dphoton_posxy->GetXaxis()->SetTitle("Position in x [mm]");
 	_2Dphoton_posxy->GetYaxis()->SetTitle("Position in y [mm]");
-	_2Dphoton_posrz=tfs->make<TH2F>("2D photon generation RZ","Position of e+e- hits in R-Z plane" ,100, 3980,3820,150,5400, 6300);
+_2Dphoton_posrz = tfs->make<TH2F>("2D photon generation RZ","Position of e+e- hits in R-Z plane" ,100, 3980,3820,150,5400, 6300);
 	_2Dphoton_posrz->GetXaxis()->SetTitle("Position in r [mm]");
 	_2Dphoton_posrz->GetYaxis()->SetTitle("Position in z [mm]");
-	_2Dphoton_timez=tfs->make<TH2F>("2D photon generation","Time and Position of e+e- Z plane" ,150,5400, 6300,100,0,6000);
+_2Dphoton_timez = tfs->make<TH2F>("2D photon generation Time and Z","Time and Position of e+e- Z plane" ,150,5400, 6300,100,0,6000);
 	_2Dphoton_timez->GetXaxis()->SetTitle("Position in z [mm]");
 	_2Dphoton_timez->GetYaxis()->SetTitle("Time [ns]");
-	_2Dphoton_momz=tfs->make<TH2F>("2D photon generation","Momentum and Position of e+e- Z plane" ,150,5400, 6300,100,-1,1);
+_2Dphoton_momz = tfs->make<TH2F>("2D photon generation Momentum and Z","Momentum and Position of e+e- Z plane" ,150,-6000, 6300,100,-100,100);
 	_2Dphoton_momz->GetXaxis()->SetTitle("Position in z [mm]");
 	_2Dphoton_momz->GetYaxis()->SetTitle("Start Momentum [MeV/c]");
+_2Dparts_vs_pdgid = tfs->make<TH2F>("2D photon generation Parts and PDGID","Number and ID of Particles" ,150,0, 10, 100,-15,30);
+_2Dparts_vs_pdgid->GetXaxis()->SetTitle("Number of Particles");
+_2Dparts_vs_pdgid->GetYaxis()->SetTitle("Particle ID");
 }
 void PhotonAna::analyze(const art::Event& event) {
 	auto chH = event.getValidHandle<mu2e::MCTrajectoryCollection>(_SimToken);
@@ -140,15 +148,16 @@ void PhotonAna::analyze(const art::Event& event) {
 	for(unsigned int k = 0; k < _SimCol->size(); k++){ 
 		for(trajectoryIter=_SimCol->begin(); trajectoryIter!=_SimCol->end(); trajectoryIter++){
 		_pdgid = trajectoryIter->first->pdgId();
-		startmomentum = trajectoryIter->first->startMomentum().mag();
-		endmomentum = trajectoryIter->first->endMomentum().mag();
+startmomentum = trajectoryIter->first->startMomentum().rho();
+endmomentum = trajectoryIter->first->endMomentum().rho();
 		startposx = trajectoryIter->first->startPosition().x();
 		startposy = trajectoryIter->first->startPosition().y();
 		startposz = trajectoryIter->first->startPosition().z();
-		startposr = sqrt(startposx*startposx+startposy*startposy);
+startposr = sqrt(((startposx)*(startposx))+startposy*startposy);
 		endposx = trajectoryIter->first->startPosition().x();
 		endposy = trajectoryIter->first->startPosition().y();
 		endposz = trajectoryIter->first->startPosition().z();
+nparts = _SimCol->size();
 		time = trajectoryIter->first->startGlobalTime();
 	  _photon_analyzer->Fill(); 
 	  _3Dphoton_position->Fill(startposx,startposy,startposz); 
@@ -156,29 +165,29 @@ void PhotonAna::analyze(const art::Event& event) {
 	  _2Dphoton_posrz->Fill(startposr,startposz); 
 	  _2Dphoton_timez->Fill(startposz,time); 
 	  _2Dphoton_momz->Fill(startmomentum,time); 
+_2Dparts_vs_pdgid->Fill(nparts,_pdgid);
 		}
 	}
 }
- /* using LHPT = KinKal::PiecewiseTrajectory<KinKal::LoopHelix>;
-  void PhotonAna::analyze(const art::Event& event) {
-    auto kalH = event.getValidHandle<KalSeedCollection>(_KalToken);
-    _KalCol = kalH.product();
-  cout << "Kal Col: " << _KalCol << endl;
-    for(unsigned int k = 0; k < _KalCol->size(); k++){
-      KalSeed kseed = (*_KalCol)[k];
-  cout << "Helix: " << kseed.loopHelixFit() << endl;
-      if(kseed.loopHelixFit()){
-        std::unique_ptr<LHPT> trajectory = kseed.loopHelixFitTrajectory();
- cout << "Line 99"  << endl;
-        double t1 = trajectory->range().begin();
- cout << "Line 101 " << endl;
-        double x1 = trajectory->position3(t1).x();
-        double y1 = trajectory->position3(t1).y();
-        double z1 = trajectory->position3(t1).z();
-        _pathlength = sqrt((x1)*(x1)+(y1)*(y1)+(z1)*(z1));
-        _photon_analyzer->Fill(); 
-
-        }
+/* using LHPT = KinKal::PiecewiseTrajectory<KinKal::LoopHelix>;
+void PhotonAna::analyze(const art::Event& event) {
+auto kalH = event.getValidHandle<KalSeedCollection>(_KalToken);
+_KalCol = kalH.product();
+cout << "Kal Col: " << _KalCol << endl;
+for(unsigned int k = 0; k < _KalCol->size(); k++){
+KalSeed kseed = (*_KalCol)[k];
+cout << "Helix: " << kseed.loopHelixFit() << endl;
+if(kseed.loopHelixFit()){
+std::unique_ptr<LHPT> trajectory = kseed.loopHelixFitTrajectory();
+cout << "Line 99"  << endl;
+double t1 = trajectory->range().begin();
+cout << "Line 101 " << endl;
+double x1 = trajectory->position3(t1).x();
+double y1 = trajectory->position3(t1).y();
+double z1 = trajectory->position3(t1).z();
+_pathlength = sqrt((x1)*(x1)+(y1)*(y1)+(z1)*(z1));
+_photon_analyzer->Fill();
+}
 // cout << "Traj Range: " << x1 << endl;
       }
     } */ 
