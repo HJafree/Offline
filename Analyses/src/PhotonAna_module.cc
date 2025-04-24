@@ -1,6 +1,6 @@
 //
 // TODO:  This file will analyze the outgoing photons energy, momentum and position by looking at the indicent electron/positron
-// Original author S. Middleton and H. Jafree
+// Original author S. Middleton
 //
 
 #include "fhiclcpp/ParameterSet.h"
@@ -17,6 +17,7 @@
 #include "Offline/TrackerGeom/inc/Tracker.hh"
 #include "Offline/RecoDataProducts/inc/KalSeed.hh"
 #include "Offline/MCDataProducts/inc/SimParticle.hh"
+#include "Offline/MCDataProducts/inc/StrawGasStep.hh"
 #include "Offline/MCDataProducts/inc/MCTrajectoryPoint.hh"
 #include "Offline/MCDataProducts/inc/MCTrajectoryCollection.hh"
 
@@ -50,148 +51,370 @@
 using namespace std;
 namespace mu2e{
 
-class PhotonAna : public art::EDAnalyzer {
-	public:
-		struct Config {
-		using Name=fhicl::Name;
-		using Comment=fhicl::Comment;
-		fhicl::Atom<int> diag{Name("diag"), Comment("Create diag histograms"),0};
-		fhicl::Atom<art::InputTag> KalToken{Name("KalSeedCollection"),Comment("tag for kal seed collection")};
-		fhicl::Atom<art::InputTag> SimToken{Name("MCTrajectoryCollection"),Comment("tag for MC trajectory collection")};
-};
-	typedef art::EDAnalyzer::Table<Config> Parameters;
-	explicit PhotonAna(const Parameters& conf);
-	virtual void beginJob() override;
-	virtual void analyze(const art::Event& e);
+  class PhotonAna : public art::EDAnalyzer {
+	  public:
+		  struct Config {
+		  using Name=fhicl::Name;
+		  using Comment=fhicl::Comment;
+		  fhicl::Atom<int> diag{Name("diag"), Comment("Create diag histograms"),0};
+	    fhicl::Atom<art::InputTag> StrawToken{Name("StrawGasStepCollection"),Comment("tag for straw gas step collection")};
+		  fhicl::Atom<art::InputTag> MCToken{Name("MCTrajectoryCollection"),Comment("tag for MC trajectory collection")};
+		  fhicl::Atom<art::InputTag> SimToken{Name("SimParticleCollection"),Comment("tag for Sim collection")};
+  };
+	  typedef art::EDAnalyzer::Table<Config> Parameters;
+	  explicit PhotonAna(const Parameters& conf);
+	  virtual void beginJob() override;
+	  virtual void analyze(const art::Event& e);
 
-private:
-	Config _conf;
-	art::InputTag _KalToken;
-	art::InputTag _SimToken;
-	const KalSeedCollection* _KalCol;
-	const MCTrajectoryCollection* _SimCol;
-	TTree* _photon_analyzer; 
-	TH3F* _3Dphoton_position;
-	TH2F* _2Dphoton_posxy;
-	TH2F* _2Dphoton_posrz;
-	TH2F* _2Dphoton_timez;
-	TH2F* _2Dphoton_momz;
-TH2F* _2Dparts_vs_pdgid;
-	Float_t _pdgid;
-	Float_t startmomentum; 
-	Float_t endmomentum;
-	//for position: need x y and x-- maybe can yse brackets with , to seperate-- for not only plot start pos
-	Float_t time;
-	Float_t startposx;
-	Float_t startposy;
-	Float_t startposz;
-	Float_t startposr;
-	Float_t endposx;
-	Float_t endposy;
-	Float_t endposz;
-Int_t nparts;
-	//Float_t _y;
-	//Float_t _z;
-//float Square(float value){
-    // Multiply value two times
-   // return value*value;
-	};
+  private:
+	  Config _conf;
+	  int _diagLevel;
+	  art::InputTag _StrawToken;
+	  art::InputTag _MCToken;
+	  art::InputTag _SimToken;
+	  const StrawGasStepCollection* _StrawCol;
+	  const MCTrajectoryCollection* _TrajCol;
+	  const SimParticleCollection* _SimCol;
+	  
+  //Declaring variables: Daughter particles 
+	  Float_t _pdgid;
+	  //TTree *_photon_analyzer;
+	  TTree *_simpart_analyzer;
+	  //StrawId strawid;
+	  Int_t nparts;
+	  
+	  Float_t ElecPairMom;
+	  Float_t PosPairMom;
+	  Float_t TotalPairMom;
+	  
+	  Float_t ElecStartMomx;
+	  Float_t ElecStartMomy;
+	  Float_t ElecStartMomz;
+	  
+	  Float_t ElecStartPosx;
+	  Float_t ElecStartPosy;
+	  Float_t ElecStartPosz;
+	  Float_t ElecStartPosr;
 
-PhotonAna::PhotonAna(const Parameters& conf) :
-art::EDAnalyzer(conf),
-_KalToken(conf().KalToken()),
-_SimToken(conf().SimToken())
-{}
+	  Float_t ElecEndPosx;
+	  Float_t ElecEndPosy;
+	  Float_t ElecEndPosz;
+	  Float_t ElecEndPosr;
 
-void PhotonAna::beginJob() { //TODO - can add TTree and THistograms here if required
-	art::ServiceHandle<art::TFileService> tfs;
-_photon_analyzer = tfs->make<TTree>("photon_analyzer"," Diagnostics for Photon Conversion Track Fitting");
-	_photon_analyzer->Branch("pdgid", &_pdgid, "pdgid/F"); 
-	_photon_analyzer->Branch("StartMom", &startmomentum, "StartMom/F"); 
-	_photon_analyzer->Branch("EndMom", &endmomentum, "End Mom/F");
-	_photon_analyzer->Branch("StartPositionx", &startposx, "StartPositionx/F");
-	//_photon_analyzer->GetXaxis()->SetTitle("Position in x [mm]");
-	_photon_analyzer->Branch("StartPositiony", &startposy, "StartPositiony/F");
-	//_photon_analyzer->GetXaxis()->SetTitle("Position in y [mm]");
-	_photon_analyzer->Branch("StartPositionz", &startposz, "StartPositionz/F");
-	//_photon_analyzer->GetXaxis()->SetTitle("Position in z [mm]");
-	_photon_analyzer->Branch("EndPositionx", &endposx, "EndPositionx/F");
-	_photon_analyzer->Branch("EndPositiony", &endposx, "EndPositiony/F");
-	_photon_analyzer->Branch("EndPositionz", &endposx, "EndPositionz/F"); 
-	_photon_analyzer->Branch("Time", &time, "Time/F"); 
-_photon_analyzer->Branch("Particles", &nparts, "Time/I");
-//_photon_analyzer->GetXaxis()->SetTitle("Time[ns]");
-_3Dphoton_position = tfs->make<TH3F>("3D photon generation","Position of e+e- hits in X-Y-Z plane " ,100,-3980,-3820,150,5400, 6300,100,-80, 80);
-	_3Dphoton_position->GetXaxis()->SetTitle("Position in x [mm]");
-_3Dphoton_position->GetYaxis()->SetTitle("Position in z [mm]");
-_3Dphoton_position->GetZaxis()->SetTitle("Position in y [mm]");
-_2Dphoton_posxy = tfs->make<TH2F>("2D photon analyzer XY","Position of e+e- hits in X-Y plane " ,100,-4000,-4000,100,-100, 100);
-	_2Dphoton_posxy->GetXaxis()->SetTitle("Position in x [mm]");
-	_2Dphoton_posxy->GetYaxis()->SetTitle("Position in y [mm]");
-_2Dphoton_posrz = tfs->make<TH2F>("2D photon generation RZ","Position of e+e- hits in R-Z plane" ,100, 3980,3820,150,5400, 6300);
-	_2Dphoton_posrz->GetXaxis()->SetTitle("Position in r [mm]");
-	_2Dphoton_posrz->GetYaxis()->SetTitle("Position in z [mm]");
-_2Dphoton_timez = tfs->make<TH2F>("2D photon generation Time and Z","Time and Position of e+e- Z plane" ,150,5400, 6300,100,0,6000);
-	_2Dphoton_timez->GetXaxis()->SetTitle("Position in z [mm]");
-	_2Dphoton_timez->GetYaxis()->SetTitle("Time [ns]");
-_2Dphoton_momz = tfs->make<TH2F>("2D photon generation Momentum and Z","Momentum and Position of e+e- Z plane" ,150,-6000, 6300,100,-100,100);
-	_2Dphoton_momz->GetXaxis()->SetTitle("Position in z [mm]");
-	_2Dphoton_momz->GetYaxis()->SetTitle("Start Momentum [MeV/c]");
-_2Dparts_vs_pdgid = tfs->make<TH2F>("2D photon generation Parts and PDGID","Number and ID of Particles" ,150,0, 10, 100,-15,30);
-_2Dparts_vs_pdgid->GetXaxis()->SetTitle("Number of Particles");
-_2Dparts_vs_pdgid->GetYaxis()->SetTitle("Particle ID");
-}
-void PhotonAna::analyze(const art::Event& event) {
-	auto chH = event.getValidHandle<mu2e::MCTrajectoryCollection>(_SimToken);
-	_SimCol = chH.product();
-	std::map<art::Ptr<mu2e::SimParticle>,mu2e::MCTrajectory>::const_iterator trajectoryIter;
-	for(unsigned int k = 0; k < _SimCol->size(); k++){ 
-		for(trajectoryIter=_SimCol->begin(); trajectoryIter!=_SimCol->end(); trajectoryIter++){
-		_pdgid = trajectoryIter->first->pdgId();
-startmomentum = trajectoryIter->first->startMomentum().rho();
-endmomentum = trajectoryIter->first->endMomentum().rho();
-		startposx = trajectoryIter->first->startPosition().x();
-		startposy = trajectoryIter->first->startPosition().y();
-		startposz = trajectoryIter->first->startPosition().z();
-startposr = sqrt(((startposx)*(startposx))+startposy*startposy);
-		endposx = trajectoryIter->first->startPosition().x();
-		endposy = trajectoryIter->first->startPosition().y();
-		endposz = trajectoryIter->first->startPosition().z();
-nparts = _SimCol->size();
-		time = trajectoryIter->first->startGlobalTime();
-	  _photon_analyzer->Fill(); 
-	  _3Dphoton_position->Fill(startposx,startposy,startposz); 
-	  _2Dphoton_posxy->Fill(startposx,startposy); 
-	  _2Dphoton_posrz->Fill(startposr,startposz); 
-	  _2Dphoton_timez->Fill(startposz,time); 
-	  _2Dphoton_momz->Fill(startmomentum,time); 
-_2Dparts_vs_pdgid->Fill(nparts,_pdgid);
-		}
-	}
-}
-/* using LHPT = KinKal::PiecewiseTrajectory<KinKal::LoopHelix>;
-void PhotonAna::analyze(const art::Event& event) {
-auto kalH = event.getValidHandle<KalSeedCollection>(_KalToken);
-_KalCol = kalH.product();
-cout << "Kal Col: " << _KalCol << endl;
-for(unsigned int k = 0; k < _KalCol->size(); k++){
-KalSeed kseed = (*_KalCol)[k];
-cout << "Helix: " << kseed.loopHelixFit() << endl;
-if(kseed.loopHelixFit()){
-std::unique_ptr<LHPT> trajectory = kseed.loopHelixFitTrajectory();
-cout << "Line 99"  << endl;
-double t1 = trajectory->range().begin();
-cout << "Line 101 " << endl;
-double x1 = trajectory->position3(t1).x();
-double y1 = trajectory->position3(t1).y();
-double z1 = trajectory->position3(t1).z();
-_pathlength = sqrt((x1)*(x1)+(y1)*(y1)+(z1)*(z1));
-_photon_analyzer->Fill();
-}
-// cout << "Traj Range: " << x1 << endl;
+	  Float_t ElecTheta;
+    Float_t ElecPhi;
+	  Float_t ElecTransMom;
+	  Float_t ElecPhotDirMom;
+	  
+	  Float_t PosStartMomx;
+	  Float_t PosStartMomy;
+	  Float_t PosStartMomz;
+	  
+	  Float_t PosTheta;
+    Float_t PosPhi;
+	  Float_t PosTransMom;
+	  Float_t PosPhotDirMom;
+	  
+	  Float_t PosStartPosx;
+	  Float_t PosStartPosy;
+	  Float_t PosStartPosz;
+	  Float_t PosStartPosr;
+
+	  Float_t PosEndPosx;
+	  Float_t PosEndPosy;
+	  Float_t PosEndPosz;
+	  Float_t PosEndPosr;
+
+	  Float_t PhotStartPosx;
+	  Float_t PhotStartPosy;
+	  Float_t PhotStartPosz;
+	  Float_t PhotStartPosr;
+
+	  Float_t PhotEndPosx;
+	  Float_t PhotEndPosy;
+	  Float_t PhotEndPosz;
+	  Float_t PhotEndPosr;
+	  	  
+	  Float_t PhotStartMomx;
+	  Float_t PhotStartMomy;
+	  Float_t PhotStartMomz;
+	  Float_t PhotTotMom;
+	  
+	  Float_t PhotTheta;
+	  Float_t PhotPhi;
+	  
+	  Int_t nParts;
+	  
+	  unsigned int nConv = 0;
+	  unsigned int nConvParticles = 0;
+	  unsigned int nBoth = 0;
+	  unsigned int nSameMother = 0;
+	  unsigned int nSameMotherPhoton = 0;
+	  };
+
+  PhotonAna::PhotonAna(const Parameters& conf) :
+  art::EDAnalyzer(conf),
+  _diagLevel(conf().diag()),
+  _StrawToken(conf().StrawToken()),
+  _MCToken(conf().MCToken()),
+  _SimToken(conf().SimToken())
+  {}
+
+  void PhotonAna::beginJob() { //TODO - can add TTree and THistograms here if required
+	  art::ServiceHandle<art::TFileService> tfs;
+  //1D Historgrams
+
+	  _simpart_analyzer = tfs->make<TTree>("simpart_analyzer"," Diagnostics for Photon Conversion Track Fitting");
+	  _simpart_analyzer->Branch("ElecPairMom",&ElecPairMom,"elecPairMom/F");
+	  _simpart_analyzer->Branch("PosPairMom",&PosPairMom,"posPairMom/F");
+	  _simpart_analyzer->Branch("TotalPairMom",&TotalPairMom,"totalPairMom/F");
+	  _simpart_analyzer->Branch("Particles", &nParts, "nParts/I");
+	  
+	  _simpart_analyzer->Branch("ElecStartMomx",&ElecStartMomx,"ElecStartMomx/F");
+	  _simpart_analyzer->Branch("ElecStartMomy",&ElecStartMomy,"ElecStartMomy/F");
+	  _simpart_analyzer->Branch("ElecStartMomz",&ElecStartMomz,"ElecStartMomz/F");
+	  
+	  _simpart_analyzer->Branch("ElecStartPosx",&ElecStartPosx,"ElecStartPosx/F");
+	  _simpart_analyzer->Branch("ElecStartPosy",&ElecStartPosy,"ElecStartPosy/F");
+	  _simpart_analyzer->Branch("ElecStartPosz",&ElecStartPosz,"ElecStartPosz/F");
+	  _simpart_analyzer->Branch("ElecStartPosr",&ElecStartPosr,"ElecStartPosr/F");
+
+	  _simpart_analyzer->Branch("ElecEndPosx",&ElecEndPosx,"ElecEndPosx/F");
+	  _simpart_analyzer->Branch("ElecEndPosy",&ElecEndPosy,"ElecEndPosy/F");
+	  _simpart_analyzer->Branch("ElecEndPosz",&ElecEndPosz,"ElecEndPosz/F");
+	  _simpart_analyzer->Branch("ElecEndPosr",&ElecEndPosr,"ElecEndPosr/F");
+	  
+	  _simpart_analyzer->Branch("PosStartMomx",&PosStartMomx,"PosStartMomx/F");
+	  _simpart_analyzer->Branch("PosStartMomy",&PosStartMomy,"PosStartMomy/F");
+	  _simpart_analyzer->Branch("PosStartMomz",&PosStartMomz,"PosStartMomz/F");
+	  
+	  _simpart_analyzer->Branch("PosStartPosx",&PosStartPosx,"PosStartPosx/F");
+	  _simpart_analyzer->Branch("PosStartPosy",&PosStartPosy,"PosStartPosy/F");
+	  _simpart_analyzer->Branch("PosStartPosz",&PosStartPosz,"PosStartPosz/F");
+	  _simpart_analyzer->Branch("PosStartPosr",&PosStartPosr,"PosStartPosr/F");
+
+	  _simpart_analyzer->Branch("PosEndPosx",&PosEndPosx,"PosEndPosx/F");
+	  _simpart_analyzer->Branch("PosEndPosy",&PosEndPosy,"PosEndPosy/F");
+	  _simpart_analyzer->Branch("PosEndPosz",&PosEndPosz,"PosEndPosz/F");
+	  _simpart_analyzer->Branch("PosEndPosr",&PosEndPosr,"PosEndPosr/F");
+
+	  _simpart_analyzer->Branch("PhotStartPosx",&PhotStartPosx,"PhotStartPosx/F");
+	  _simpart_analyzer->Branch("PhotStartPosy",&PhotStartPosy,"PhotStartPosy/F");
+	  _simpart_analyzer->Branch("PhotStartPosz",&PhotStartPosz,"PhotStartPosz/F");
+	  _simpart_analyzer->Branch("PhotStartPosr",&PhotStartPosr,"PhotStartPosr/F");
+
+	  _simpart_analyzer->Branch("PhotEndPosx",&PhotEndPosx,"PhotEndPosx/F");
+	  _simpart_analyzer->Branch("PhotEndPosy",&PhotEndPosy,"PhotEndPosy/F");
+	  _simpart_analyzer->Branch("PhotEndPosz",&PhotEndPosz,"PhotEndPosz/F");
+	  _simpart_analyzer->Branch("PhotEndPosr",&PhotEndPosr,"PhotEndPosr/F");
+	  
+	  _simpart_analyzer->Branch("PhotStartMomx",&PhotStartMomx,"PhotStartMomx/F");
+	  _simpart_analyzer->Branch("PhotStartMomy",&PhotStartMomy,"PhotStartMomy/F");
+	  _simpart_analyzer->Branch("PhotStartMomz",&PhotStartMomz,"PhotStartMomz/F");
+	  _simpart_analyzer->Branch("PhotTotMom",&PhotTotMom,"PhotTotMom/F");
+	  
+	  _simpart_analyzer->Branch("ElecTheta",&ElecTheta,"ElecTheta/F");
+	  _simpart_analyzer->Branch("ElecPhi",&ElecPhi,"ElecPhi/F");
+	  _simpart_analyzer->Branch("ElecTransMom",&ElecTransMom,"ElecTransMom/F");	  
+	  _simpart_analyzer->Branch("ElecPhotDirMom",&ElecPhotDirMom,"ElecPhotDirMom/F");
+	   
+		_simpart_analyzer->Branch("PosTheta",&PosTheta,"PosTheta/F");
+	  _simpart_analyzer->Branch("PosPhi",&PosPhi,"PosPhi/F");
+	  _simpart_analyzer->Branch("PosTransMom",&PosTransMom,"PosTransMom/F");	  
+	  _simpart_analyzer->Branch("PosPhotDirMom",&PosPhotDirMom,"PosPhotDirMom/F");
+	  
+	  _simpart_analyzer->Branch("PhotTheta",&PhotTheta,"PhotTheta/F");
+	  _simpart_analyzer->Branch("PhotPhi",&PhotPhi,"PhotPhi/F");
+  }
+  void PhotonAna::analyze(const art::Event& event) {
+    
+    int eventid_ = event.id().event(); 
+    int runid_ = event.run();
+    int subrunid_ = event.subRun();
+    if(_diagLevel > 1){
+      std::cout<<"+=======================================================+"<<std::endl;
+      std::cout<<"event : "<<eventid_<<" subrun : "<<subrunid_<<" run : "<<runid_<<std::endl;
+    }
+    //------------SimParticles-------------//
+    auto sH = event.getValidHandle<mu2e::SimParticleCollection>(_SimToken);
+    _SimCol = sH.product();
+
+    //std::cout<<"SimCol Size : "<<_SimCol->size()<<std::endl;
+    
+    // some counters and bools:
+    nConvParticles = 0;
+    bool isConv = false;
+    bool hasElectron = false;
+    bool hasPositron = false;
+    bool hasMotherPhoton = false;
+    double ElectronMom = 0;
+    double PositronMom = 0;
+    
+    std::vector<double> ElecMotherPos; //TODO update plots to use these positions
+    std::vector<double> PosMotherPos;
+
+    bool hasBoth = false;
+    //loop over Simparticles:
+    for ( SimParticleCollection::const_iterator i=_SimCol->begin(); i!=_SimCol->end(); ++i ){
+      SimParticle const& sim = i->second;
+      
+      //check the particle is e-/e+ and created by conversion
+      if(abs(sim.pdgId()) == 11 and sim.creationCode()==13){//(sim.creationCode()==173 or sim.creationCode()==174)
+          
+          double TotalMomentum = sim.startMomentum().rho();
+          
+          // fill counters
+          if(isConv ==false) nConv ++; // avoids double counting for each of the pair
+          isConv = true;
+          nConvParticles ++;
+
+          //print information on daughter:
+          if(_diagLevel > 1){
+            std::cout<<"Daughter PDG ID : "<<sim.pdgId()<<" Creation code "<<sim.creationCode()<<std::endl;
+            std::cout<<"Daughter Start Pos. : "<<sim.startPosition().x()<<" , "<<sim.startPosition().y()<<" , "<<sim.startPosition().z()<<std::endl;
+            std::cout<<"Daughter End Pos. : "<<sim.endPosition().x()<<" , "<<sim.endPosition().y()<<" , "<<sim.endPosition().z()<<std::endl;
+            std::cout<<"Daughter total mom : "<<TotalMomentum<<std::endl;
+          }
+
+          // parent information on mother:
+          art::Ptr<SimParticle> const& parent = sim.parent();
+          
+          PhotStartMomx = parent->startMomentum().x();
+          PhotStartMomy = parent->startMomentum().y();
+          PhotStartMomz = parent->startMomentum().z();
+          PhotTotMom = parent->startMomentum().rho();
+          PhotTheta = parent->startMomentum().theta();
+          PhotPhi = parent->startMomentum().phi() ;
+          
+          // information on grandmother
+          /*art::Ptr<SimParticle> grandparent = parent->parent();
+          if(_diagLevel > 1) std::cout<<"ancestor id "<<grandparent->parent()->pdgId()<<std::endl;
+          if(!grandparent->isPrimary() and abs(grandparent->pdgId()!=13)){
+            int id = grandparent->parent()->pdgId();
+            std::vector<int> ancestors;
+            ancestors.push_back(id);
+            while(abs(id) !=13){
+              id = grandparent->parent()->pdgId();
+              grandparent =  grandparent->parent();
+              if(_diagLevel > 1) std::cout<<"ancestor id "<<id<<std::endl;
+            }
+          }*/
+			  
+          
+          if(_diagLevel > 1){
+            std::cout<<"Mother PDG ID : "<<parent->pdgId()<<std::endl;
+            std::cout<<"Mother End Pos. : "<<parent->endPosition().x()<<" , "<<parent->endPosition().y()<<" , "<<parent->endPosition().z()<<std::endl;
+          }
+          
+          //check mother ID is photon
+          if(parent->pdgId() == 22 and parent->creationCode()==175) 
+						hasMotherPhoton = true; //TODO keep this at ==13?
+
+            PhotStartPosx = parent->startPosition().x()+3903;
+            PhotStartPosy = parent->startPosition().y();
+            PhotStartPosz = parent->startPosition().z();
+            PhotStartPosr = sqrt(PhotStartPosx*PhotStartPosx+PhotStartPosy*PhotStartPosy);
+
+            PhotEndPosx = parent->endPosition().x();
+            PhotEndPosy = parent->endPosition().y();
+            PhotEndPosz = parent->endPosition().z();
+            PhotEndPosr = sqrt(PhotEndPosx*PhotEndPosx+PhotEndPosy*PhotEndPosy);
+
+          
+          // check electron and positrons and save parent positions for later checks
+          if(sim.pdgId() == 11) {
+            hasElectron  = true;
+            ElectronMom = TotalMomentum; //TODO - add these to the TTree
+            ElecMotherPos.push_back(parent->endPosition().x());
+            ElecMotherPos.push_back(parent->endPosition().y());
+            ElecMotherPos.push_back(parent->endPosition().z());
+
+            ElecStartMomx  =  sim.startMomentum().x();
+            ElecStartMomy =  sim.startMomentum().y();
+            ElecStartMomz =  sim.startMomentum().z();
+
+            ElecStartPosx = sim.startPosition().x()+3903;
+            ElecStartPosy = sim.startPosition().y();
+            ElecStartPosz = sim.startPosition().z();
+            ElecStartPosr = sqrt(ElecStartPosx*ElecStartPosx+ElecStartPosy*ElecStartPosy);
+
+            ElecEndPosx = sim.endPosition().x();
+            ElecEndPosy = sim.endPosition().y();
+            ElecEndPosz = sim.endPosition().z();
+            ElecEndPosr = sqrt(ElecEndPosx*ElecEndPosx+ElecEndPosy*ElecEndPosy);
+
+            ElecTheta = sim.startMomentum().theta();
+            ElecPhi = sim.startMomentum().phi();
+            ElecTransMom = TotalMomentum*(sin(ElecTheta));
+           
+            ElecPhotDirMom = sim.startMomentum().dot(parent->startMomentum());//(ElecMom[0]*ElecMotherMom[0]+ElecMom[1]*ElecMotherMom[1]+ElecMom[2]*ElecMotherMom[2])/ElecMotherAbsMom;
+
+           }
+          if(sim.pdgId() == -11){
+            hasPositron  = true;
+            PositronMom = TotalMomentum;
+            PosMotherPos.push_back(parent->endPosition().x());
+            PosMotherPos.push_back(parent->endPosition().y());
+            PosMotherPos.push_back(parent->endPosition().z());
+
+            PosStartMomx  =  sim.startMomentum().x();
+            PosStartMomy =  sim.startMomentum().y();
+            PosStartMomz =  sim.startMomentum().z();
+
+            PosStartPosx = sim.startPosition().x()+3903;
+            PosStartPosy = sim.startPosition().y();
+            PosStartPosz = sim.startPosition().z();
+            PosStartPosr = sqrt(PosStartPosx*PosStartPosx+PosStartPosy*PosStartPosy);
+
+            PosEndPosx = sim.endPosition().x();
+            PosEndPosy = sim.endPosition().y();
+            PosEndPosz = sim.endPosition().z();
+            PosEndPosr = sqrt(PosEndPosx*PosEndPosx+PosEndPosy*PosEndPosy);
+
+            PosTheta = sim.startMomentum().theta();
+            PosPhi = sim.startMomentum().phi();
+            PosTransMom = TotalMomentum*(sin(PosTheta));
+
+            PosPhotDirMom = sim.startMomentum().dot(parent->startMomentum());
+
+          }
+
+        }
       }
-    } */ 
-
+          //------------ Straw Gas Collection  --------------------//
+	auto strawH = event.getValidHandle<StrawGasStepCollection>(_StrawToken);
+	_StrawCol = strawH.product();
+	unsigned nElectronSteps(0),nPositronSteps(0);
+	for (size_t k = 0; k < _StrawCol->size(); k++){
+  	StrawGasStep strawgas = (*_StrawCol)[k];
+  	art::Ptr<SimParticle> const& simpart = strawgas.simParticle();
+  		if      (simpart->pdgId()==11)  ++nElectronSteps;
+  		else if (simpart->pdgId()==-11) ++nPositronSteps;
+		}      
+      // fill counters and (nElectronSteps>=10) and nPositronSteps>=10
+      if((hasElectron and (nElectronSteps>=10)) and (hasPositron and nPositronSteps>=10)) hasBoth = true;
+      if(isConv and hasBoth) nBoth ++;
+      if(ElecMotherPos.size() !=0 and PosMotherPos.size() != 0 and ElecMotherPos[0] == PosMotherPos[0] and ElecMotherPos[1] == PosMotherPos[1] and ElecMotherPos[2] == PosMotherPos[2]) nSameMother++;
+      if(ElecMotherPos.size() !=0 and PosMotherPos.size() != 0 and ElecMotherPos[0] == PosMotherPos[0] and ElecMotherPos[1] == PosMotherPos[1] and ElecMotherPos[2] == PosMotherPos[2] and hasMotherPhoton) nSameMotherPhoton++;
+      
+      // only print if its an interesting event but iterate without printing others
+      if(_diagLevel > 0 and isConv and hasBoth and ElecMotherPos.size() !=0 and PosMotherPos.size() != 0 and ElecMotherPos[0] == PosMotherPos[0] and ElecMotherPos[1] == PosMotherPos[1] and ElecMotherPos[2] == PosMotherPos[2] and hasMotherPhoton and nConvParticles==2){ //nConv == 2
+        if(_diagLevel == 1){ std::cout<<"+=======================================================+"<<std::endl;
+        std::cout<<"event : "<<eventid_<<" subrun : "<<subrunid_<<" run : "<<runid_<<std::endl;}
+        std::cout<<"number of conversion particles in this event "<<nConvParticles<<std::endl;
+        std::cout<<"number of total conversions "<<nConv<<std::endl;
+        std::cout<<"number of events with both e+/e-s conversions "<<nBoth<<std::endl;
+        std::cout<<"number of events with both e+/e-s conversions from same mother "<<nSameMother<<std::endl;
+        std::cout<<"number of events with both e+/e-s conversions from same mother and its a photon "<<nSameMotherPhoton<<std::endl;
+        std::cout<<"elec mom "<<ElectronMom<<" positron mom "<<PositronMom<<" total mom "<<ElectronMom+PositronMom<<std::endl;
+        ElecPairMom = ElectronMom;
+        PosPairMom = PositronMom;
+        TotalPairMom = ElectronMom + PositronMom;
+        nParts = nConvParticles;
+        _simpart_analyzer->Fill();
+      }
+ 
+  }
 }//end mu2e namespace
 using mu2e::PhotonAna;
-DEFINE_ART_MODULE(PhotonAna);
+DEFINE_ART_MODULE(PhotonAna)

@@ -29,10 +29,22 @@ CaloClusterCompareNew : {
 
 PhotonAna : {
         module_type : PhotonAna
-        KalSeedCollection : KKDeM
+        diag : 1
+        StrawGasStepCollection : compressDigiMCs
 MCTrajectoryCollection : compressDigiMCs
+SimParticleCollection : compressDigiMCs #compressDetStepMCs
 }
-
+PairConvFilter : {
+        module_type : PairConvFilter
+        diag : 1
+        StrawGasStepCollection :compressDigiMCs #compressDetStepMCs
+				SimParticleCollection : compressDigiMCs#compressDetStepMCs
+}
+PairConvAna : {
+        module_type : PairConvAna
+        diag : 1
+        KalSeedCollection :TTKSFDeM #TTCalSeedFitDem
+}
 CaloClusterCompareOld : {
         module_type : CaloClusterCompare
         CaloClusterCollection : CaloClusterFast
@@ -92,8 +104,17 @@ PhotonAnalysis :
 {
    analyzers : {
         PhotonAna : @local::PhotonAna
+ 				PairConvAna : @local::PairConvAna
    }
    Analysis : [PhotonAna]
+
+   RecoAnalysis : [PairConvAna]
+
+   filters : {
+      PairConvFilter : @local::PairConvFilter
+   }
+   Filter : [PairConvFilter]
+
 }
 
 ClusterCompareOld :

@@ -128,4 +128,4 @@ namespace mu2e{
 
 }//end mu2e namespace
 using mu2e::PhotonConversionFinder;
-DEFINE_ART_MODULE(PhotonConversionFinder);
+DEFINE_ART_MODULE(PhotonConversionFinder)

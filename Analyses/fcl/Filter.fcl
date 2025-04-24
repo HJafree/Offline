@@ -1,0 +1,28 @@
+# author : Sophie Middleton
+# purpose : filter 
+#include "Offline/fcl/minimalMessageService.fcl"
+#include "Offline/fcl/standardProducers.fcl"
+#include "Offline/fcl/standardServices.fcl"
+#include "Offline/Analyses/fcl/prolog.fcl"
+
+services : @local::Services.Reco
+
+process_name : PhotonFil
+
+source : { module_type : RootInput }
+
+physics :
+{
+ filters : { @table::PhotonAnalysis.filters}
+}
+
+physics.EndPath  : [ @sequence::PhotonAnalysis.Filter] 
+
+# by default, turn off histogram output
+services.TFileService.fileName : "/dev/null"
+# provide time information
+services.TimeTracker.printSummary: true
+# show results of each path
+services.scheduler.wantSummary: true
+#show summary of error logger
+services.message.destinations.log.outputStatistics : true

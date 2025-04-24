@@ -123,21 +123,21 @@ throw   cet::exception("BADINPUT")
 
 void FlatMuonDaughterGenerator::beginJob() { //TODO - can add TTree and THistograms here if required
 art::ServiceHandle<art::TFileService> tfs;
-_photon_generator=tfs->make<TTree>("photon_generation"," Diagnostics for Photon Generation Track Fitting");
-_2Dphoton_genxy = tfs->make<TH2F>("2D photon generation XY","Position of muons hits in X-Y plane " ,100,-3980,-3820,100,-80, 80);
+_photon_generator=tfs->make<TTree>("Muon_generation"," Diagnostics for Muon Generation Track Fitting");
+_2Dphoton_genxy = tfs->make<TH2F>("2D Muon generation XY","Position of muons hits in X-Y plane " ,100,-3980,-3820,100,-80, 80);
 _2Dphoton_genxy->GetXaxis()->SetTitle("Position in x [mm]");
 _2Dphoton_genxy->GetYaxis()->SetTitle("Position in y [mm]");
-_2Dphoton_genrz = tfs->make<TH2F>("2D photon generation RZ","Position of muon hits in R-Z plane" ,100, 3980,3820,150,5400, 6300);
+_2Dphoton_genrz = tfs->make<TH2F>("2D Muon generation RZ","Position of muon hits in R-Z plane" ,100, 3980,3820,150,5400, 6300);
 _2Dphoton_genrz->GetXaxis()->SetTitle("Position in r [mm]");
 _2Dphoton_genrz->GetYaxis()->SetTitle("Position in z [mm]");
-_3Dphoton_genxyz = tfs->make<TH3F>("3D photon generation","Position of muon hits in X-Y-Z plane " ,100,-3980,-3820,150,5400,6300,100,-80,80);
+_3Dphoton_genxyz = tfs->make<TH3F>("3D Muon generation","Position of muon hits in X-Y-Z plane " ,100,-3980,-3820,150,5400,6300,100,-80,80);
 _3Dphoton_genxyz->GetXaxis()->SetTitle("Position in x [mm]");
 _3Dphoton_genxyz->GetYaxis()->SetTitle("Position in z [mm]");
 _3Dphoton_genxyz->GetZaxis()->SetTitle("Position in y [mm]");
-_2Dphoton_zmom = tfs->make<TH2F>("2D photon generation Mom-Z","Momentum and position in z axis" ,150,5400, 6300,100,-500,500);
+_2Dphoton_zmom = tfs->make<TH2F>("2D Muon generation Mom-Z","Momentum and position in z axis" ,150,5400, 6300,100,-500,500);
 _2Dphoton_zmom->GetXaxis()->SetTitle("Position in z [mm]");
 _2Dphoton_zmom->GetYaxis()->SetTitle("Momentum [MeV/c]");
-_2Dphoton_ztime = tfs->make<TH2F>("2D photon generation Time-Z","Time and position in z axis" ,150,5400, 6300,100,0,6000);
+_2Dphoton_ztime = tfs->make<TH2F>("2D Muon generation Time-Z","Time and position in z axis" ,150,5400, 6300,100,0,6000);
 _2Dphoton_ztime->GetXaxis()->SetTitle("Position in z [mm]");
 _2Dphoton_ztime->GetYaxis()->SetTitle("Time [ns]");
 _photon_generator->Branch("Momentum", &_momentum, "Momentum/F");
